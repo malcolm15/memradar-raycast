@@ -10,7 +10,11 @@
 // nobody thought was about licensing.
 //
 // Checks:
-//   1. Both live files carry a non-empty `attribution`.
+//   1. Both live files carry a non-empty `attribution`, and the PER-PRODUCT
+//      file's does not invite republication: consent covers monthly points for
+//      use with this extension, not onward redistribution, and an invitation
+//      reads as purporting to grant a sublicence (Section 18(7)(c)). The market
+//      file may invite it: those are MemRadar's own aggregate medians.
 //   2. No UI source hardcodes attribution text; it must be read from the
 //      payload, so the wording cannot drift out of compliance.
 //   3. The README credits Keepa and states the monthly granularity.
@@ -114,6 +118,14 @@ for (const [label, payload] of [
   if (typeof a !== "string" || a.trim() === "") fail(`${label} payload has no non-empty "attribution" field`);
   else if (!a.includes("Keepa")) fail(`${label} payload attribution does not name Keepa`);
   else ok(`${label} payload carries attribution (${a.length} chars, names Keepa)`);
+}
+
+// 1b. The per-product file must not invite republication of the history.
+const productAttribution = typeof products.attribution === "string" ? products.attribution : "";
+if (/republish|redistribut(e|ion) (is )?(allowed|permitted)|free to share/i.test(productAttribution)) {
+  fail('products payload attribution invites republication ("republish"), which the licence does not grant');
+} else {
+  ok("products payload attribution does not invite republication");
 }
 
 // 2. Nothing hardcoded in the UI.

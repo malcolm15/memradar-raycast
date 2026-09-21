@@ -38,19 +38,39 @@ export function aboveLow(product: Product): string | undefined {
 }
 
 /**
- * The monthly history, readable at Detail width. A deep product carries 129
- * months (G.SKILL RipjawsV, back to 2015), and 129 table rows is a wall of
- * numbers nobody reads. So: the last `recentMonths` in full, then one line per
- * earlier year with its low, high and year-end price, which keeps the decade
- * of shape without the scroll.
+ * The monthly history, readable at Detail width, newest first throughout: the
+ * recent months, then one line per earlier year.
+ *
+ * A deep product carries 129 months (G.SKILL RipjawsV, back to 2015), and 129
+ * table rows is a wall nobody reads, so earlier years collapse to their low,
+ * high and closing price, which keeps the decade of shape without the scroll.
+ *
+ * MONTHS WITH NO RECORDED PRICE ARE OMITTED, NEVER FILLED IN. 151 of 231
+ * products have at least one such gap in their recent window, and a dash row
+ * would assert a month we never observed; the site's history tables omit gaps
+ * for the same reason. The heading therefore does not promise a count, and the
+ * span is stated underneath whenever it covers more calendar months than rows.
  */
-export function historyMarkdown(product: Product, recentMonths = 24): string {
+export function historyMarkdown(product: Product, recentCount = 24): string {
   const history = product.history_monthly ?? [];
   if (!history.length) return "_No recorded history._";
 
-  const recent = history.slice(-recentMonths);
-  const earlier = history.slice(0, Math.max(0, history.length - recentMonths));
-  const parts: string[] = [];
+  const recent = history.slice(-recentCount);
+  const earlier = history.slice(0, Math.max(0, history.length - recentCount));
+  const parts: string[] = ["### Recent months", ""];
+
+  parts.push("| Month | Price |", "| --- | --- |");
+  for (const [month, price] of [...recent].reverse()) {
+    parts.push(`| ${monthLabel(month)} | ${money(price)} |`);
+  }
+
+  const span = monthsBetween(recent[0][0], recent[recent.length - 1][0]);
+  if (span > recent.length) {
+    parts.push(
+      "",
+      `_${recent.length} recorded months, ${monthLabel(recent[0][0])} to ${monthLabel(recent[recent.length - 1][0])}. Months with no recorded price are omitted._`,
+    );
+  }
 
   if (earlier.length) {
     const byYear = new Map<string, number[]>();
@@ -59,22 +79,22 @@ export function historyMarkdown(product: Product, recentMonths = 24): string {
       if (!byYear.has(year)) byYear.set(year, []);
       byYear.get(year)?.push(price);
     }
-    parts.push(`### ${byYear.size === 1 ? "Earlier year" : "Earlier years"}`, "");
+    parts.push("", `### ${byYear.size === 1 ? "Earlier year" : "Earlier years"}`, "");
     parts.push("| Year | Low | High | Year end |", "| --- | --- | --- | --- |");
-    for (const [year, prices] of byYear) {
+    for (const [year, prices] of [...byYear].reverse()) {
       parts.push(
         `| ${year} | ${money(Math.min(...prices))} | ${money(Math.max(...prices))} | ${money(prices[prices.length - 1])} |`,
       );
     }
-    parts.push("");
   }
 
-  parts.push(`### Last ${recent.length} months`, "");
-  parts.push("| Month | Price |", "| --- | --- |");
-  for (const [month, price] of [...recent].reverse()) {
-    parts.push(`| ${monthLabel(month)} | ${money(price)} |`);
-  }
   return parts.join("\n");
+}
+
+/** Inclusive count of calendar months from one YYYY-MM to another. */
+function monthsBetween(from: string, to: string): number {
+  const index = (m: string) => Number(m.slice(0, 4)) * 12 + Number(m.slice(5, 7));
+  return index(to) - index(from) + 1;
 }
 
 /** The narrow side pane gets fewer rows and no yearly block. */

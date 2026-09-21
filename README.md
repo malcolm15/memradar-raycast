@@ -8,7 +8,7 @@ Search RAM and SSD prices with a decade of history, from [MemRadar](https://memr
 
 Search every tracked RAM and SSD product by name, brand or ASIN. Each row shows the current price and whether it is a good time to buy.
 
-Press Enter on a product for its full price history: the all-time low and high with the dates they were set, the 90-day average the buy state is measured against, how long it has been tracked, and the monthly prices. Products tracked for years show the last 24 months in full and one line per earlier year, with that year's low, high and closing price. Cmd+Enter opens the product on memradar.com; Cmd+D toggles a compact side pane in the list.
+Press Enter on a product for its full price history: the all-time low and high with the dates they were set, the 90-day average the buy state is measured against, how long it has been tracked, and the monthly prices. Products tracked for years show their recent months in full, then one line per earlier year with that year's low, high and closing price, newest first throughout. Months with no recorded price are omitted rather than filled in. Cmd+Enter opens the product on memradar.com; Cmd+D toggles a compact side pane in the list.
 
 The product list is downloaded once per session and searched locally, so typing makes no network requests.
 

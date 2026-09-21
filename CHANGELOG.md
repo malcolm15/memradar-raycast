@@ -19,3 +19,7 @@
 
 - Enter on a product now opens its full price history rather than the website. Deep products show the last 24 months in full plus one line per earlier year, with that year's low, high and closing price.
 - Open on MemRadar moved to Cmd+Enter in the list, and is the first action inside the history view.
+
+### Changed
+
+- The price history reads newest first throughout: recent months first, then earlier years below.
