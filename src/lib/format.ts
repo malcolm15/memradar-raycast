@@ -4,10 +4,14 @@ export function money(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
-/** Signed percentage, so a rise and a fall are never confused at a glance. */
+/**
+ * Signed percentage at one decimal, always: a rise and a fall are never
+ * confused at a glance, and 0 reads as 0.0% so a column of figures lines up
+ * instead of one cell looking like a different kind of number.
+ */
 export function pct(value: number): string {
   const rounded = Math.round(value * 10) / 10;
-  return `${rounded > 0 ? "+" : ""}${rounded}%`;
+  return `${rounded > 0 ? "+" : ""}${rounded.toFixed(1)}%`;
 }
 
 /** "2026-09-21" -> "21 September 2026". Fixed locale: the store is US English. */

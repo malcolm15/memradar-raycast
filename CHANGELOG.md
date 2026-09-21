@@ -4,28 +4,6 @@
 
 ### Added
 
-- Repository scaffold, manifest, and store assets.
-- Licensing pre-flight that verifies Keepa attribution and the monthly history boundary before publishing.
-
-## [Search Memory Prices] - 2026-09-21
-
-### Added
-
-- `Search Memory Prices`: search tracked RAM and SSD products by name, brand or ASIN, with current price and buy state in the list and a detail pane carrying the all-time low and high with their dates, the 90-day average, tracked days and the monthly price history.
-
-## [Full price history view] - 2026-09-21
-
-### Changed
-
-- Enter on a product now opens its full price history rather than the website. Deep products show the last 24 months in full plus one line per earlier year, with that year's low, high and closing price.
-- Open on MemRadar moved to Cmd+Enter in the list, and is the first action inside the history view.
-
-### Changed
-
-- The price history reads newest first throughout: recent months first, then earlier years below.
-
-## [Show Market Overview] - 2026-09-21
-
-### Added
-
-- `Show Market Overview`: DDR5, DDR4, NVMe and SATA with their median price, median price per gigabyte, and the change over one month, three months, six months and a year, each with the number of products it was measured across. The detail pane carries the method note, so "these are medians and the periods are not comparable" travels with the figures.
+- `Search Memory Prices`: search tracked RAM and SSD products by name, brand or ASIN. Rows show the current price and buy state; Enter opens the product's price history, with the all-time low and high and the dates they were set, the 90-day average, tracked days, and the monthly prices. Long-running products show recent months in full and one line per earlier year.
+- `Show Market Overview`: DDR5, DDR4, NVMe and SATA with their median price, median price per gigabyte, and the change over one month, three months, six months and a year, each stating the number of products it was measured across.
+- Both commands show the date their data was computed and warn when it is more than three days old. Data is cached for four hours; Refresh forces a new request. If a request fails, the last cached data is shown with its date rather than an empty list.
