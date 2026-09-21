@@ -6,13 +6,15 @@
 // while usable data exists. If the network fails and anything is cached, the
 // cached payload is returned WITH the date it was computed, and the caller
 // says so on screen. Only a failure with no cache at all is an error state.
-import type { ProductsPayload } from "./types";
+import type { MarketPayload, ProductsPayload } from "./types";
 
 export const PRODUCTS_URL = "https://memradar.com/data/raycast-v1-products.json";
+export const MARKET_URL = "https://memradar.com/data/raycast-v1-market.json";
 // Matches the 4h edge cache on these files; the data itself changes once a day.
 export const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
 export const REQUEST_TIMEOUT_MS = 15000;
 export const CACHE_KEY = "products-v1";
+export const MARKET_CACHE_KEY = "market-v1";
 // Identifies this client in the server's logs, so our traffic is attributable.
 export const USER_AGENT = "memradar-raycast (+https://memradar.com)";
 // Beyond this, the data is old enough that the reader should be told plainly.
@@ -23,13 +25,13 @@ export interface CacheLike {
   set(key: string, value: string): void;
 }
 
-export interface CachedEnvelope {
+export interface CachedEnvelope<T> {
   fetchedAt: number;
-  payload: ProductsPayload;
+  payload: T;
 }
 
-export interface LoadResult {
-  payload: ProductsPayload;
+export interface LoadResult<T> {
+  payload: T;
   /** True when the network failed and this came from the cache instead. */
   servedFromCacheAfterFailure: boolean;
   /** Present only when the above is true. */
@@ -51,12 +53,12 @@ export interface LoadDeps {
   force?: boolean;
 }
 
-function readCache(cache: CacheLike): CachedEnvelope | undefined {
-  const raw = cache.get(CACHE_KEY);
+function readCache<T>(cache: CacheLike, key: string, isUsable: (p: T) => boolean): CachedEnvelope<T> | undefined {
+  const raw = cache.get(key);
   if (!raw) return undefined;
   try {
-    const parsed = JSON.parse(raw) as CachedEnvelope;
-    if (!parsed?.payload?.products?.length) return undefined;
+    const parsed = JSON.parse(raw) as CachedEnvelope<T>;
+    if (!parsed?.payload || !isUsable(parsed.payload)) return undefined;
     return parsed;
   } catch {
     // A corrupt cache entry is the same as no cache: refetch, do not crash.
@@ -64,14 +66,23 @@ function readCache(cache: CacheLike): CachedEnvelope | undefined {
   }
 }
 
-export async function loadProducts(deps: LoadDeps): Promise<LoadResult> {
+/**
+ * One loader for both files, so the caching, the degradation rule and the
+ * request hygiene cannot differ between commands.
+ */
+async function load<T>(
+  deps: LoadDeps,
+  key: string,
+  defaultUrl: string,
+  isUsable: (payload: T) => boolean,
+): Promise<LoadResult<T>> {
   const { cache } = deps;
   const fetchImpl = deps.fetchImpl ?? fetch;
   const now = deps.now ?? Date.now;
-  const url = deps.url ?? PRODUCTS_URL;
+  const url = deps.url ?? defaultUrl;
   const ttlMs = deps.ttlMs ?? CACHE_TTL_MS;
 
-  const cached = readCache(cache);
+  const cached = readCache<T>(cache, key, isUsable);
   if (!deps.force && cached && now() - cached.fetchedAt < ttlMs) {
     return { payload: cached.payload, servedFromCacheAfterFailure: false };
   }
@@ -82,15 +93,23 @@ export async function loadProducts(deps: LoadDeps): Promise<LoadResult> {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const payload = (await res.json()) as ProductsPayload;
-    if (!payload?.products?.length) throw new Error("payload contained no products");
-    cache.set(CACHE_KEY, JSON.stringify({ fetchedAt: now(), payload } satisfies CachedEnvelope));
+    const payload = (await res.json()) as T;
+    if (!isUsable(payload)) throw new Error("payload was empty or malformed");
+    cache.set(key, JSON.stringify({ fetchedAt: now(), payload } satisfies CachedEnvelope<T>));
     return { payload, servedFromCacheAfterFailure: false };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (cached) return { payload: cached.payload, servedFromCacheAfterFailure: true, error: message };
     throw new Error(message);
   }
+}
+
+export function loadProducts(deps: LoadDeps): Promise<LoadResult<ProductsPayload>> {
+  return load<ProductsPayload>(deps, CACHE_KEY, PRODUCTS_URL, (p) => Boolean(p?.products?.length));
+}
+
+export function loadMarket(deps: LoadDeps): Promise<LoadResult<MarketPayload>> {
+  return load<MarketPayload>(deps, MARKET_CACHE_KEY, MARKET_URL, (p) => Boolean(p?.segments?.length));
 }
 
 /** Whole days between the payload's own computed date and now. */

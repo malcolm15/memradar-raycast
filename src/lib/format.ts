@@ -4,6 +4,12 @@ export function money(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
+/** Signed percentage, so a rise and a fall are never confused at a glance. */
+export function pct(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  return `${rounded > 0 ? "+" : ""}${rounded}%`;
+}
+
 /** "2026-09-21" -> "21 September 2026". Fixed locale: the store is US English. */
 export function longDate(isoDate: string): string {
   const d = new Date(`${isoDate}T00:00:00Z`);

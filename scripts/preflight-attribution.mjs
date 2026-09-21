@@ -13,7 +13,7 @@
 //   1. Both live files carry a non-empty `attribution`, and the PER-PRODUCT
 //      file's does not invite republication: consent covers monthly points for
 //      use with this extension, not onward redistribution, and an invitation
-//      reads as purporting to grant a sublicence (Section 18(7)(c)). The market
+//      reads as purporting to grant a sublicense (Section 18(7)(c)). The market
 //      file may invite it: those are MemRadar's own aggregate medians.
 //   2. No UI source hardcodes attribution text; it must be read from the
 //      payload, so the wording cannot drift out of compliance.
@@ -53,6 +53,8 @@ async function load(url, override, label) {
 // Any file under src/ that mentions Keepa, or repeats a distinctive phrase from
 // the payload's own attribution, is hardcoding what it should be rendering.
 function scanSources(attribution) {
+  // Both spellings on purpose: this list is looking for hardcoded credit text,
+  // and a British-spelled literal is just as hardcoded as an American one.
   const phrases = ["Keepa", "under licence", "under license", "with Keepa's written permission"];
   const hits = [];
   const walk = (dir) => {
@@ -123,7 +125,7 @@ for (const [label, payload] of [
 // 1b. The per-product file must not invite republication of the history.
 const productAttribution = typeof products.attribution === "string" ? products.attribution : "";
 if (/republish|redistribut(e|ion) (is )?(allowed|permitted)|free to share/i.test(productAttribution)) {
-  fail('products payload attribution invites republication ("republish"), which the licence does not grant');
+  fail('products payload attribution invites republication ("republish"), which the license does not grant');
 } else {
   ok("products payload attribution does not invite republication");
 }

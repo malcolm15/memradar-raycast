@@ -38,3 +38,30 @@ export interface ProductsPayload {
   count: number;
   products: Product[];
 }
+
+// Shapes of https://memradar.com/data/raycast-v1-market.json
+export interface MarketPeriod {
+  pct_change: number;
+  product_count: number;
+}
+
+export interface MarketSegment {
+  segment: string;
+  label: string;
+  median_price_usd?: number;
+  median_usd_per_gb?: number;
+  periods: Record<string, MarketPeriod>;
+}
+
+export interface MarketPayload {
+  version: number;
+  generated: string;
+  computed_at: string; // when the underlying stats run happened; not the build date
+  update_frequency: string;
+  notice: string;
+  method: string; // travels with the numbers: medians, periods not comparable
+  attribution: string;
+  source: string;
+  methodology: string;
+  segments: MarketSegment[];
+}

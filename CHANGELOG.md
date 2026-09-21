@@ -23,3 +23,9 @@
 ### Changed
 
 - The price history reads newest first throughout: recent months first, then earlier years below.
+
+## [Show Market Overview] - 2026-09-21
+
+### Added
+
+- `Show Market Overview`: DDR5, DDR4, NVMe and SATA with their median price, median price per gigabyte, and the change over one month, three months, six months and a year, each with the number of products it was measured across. The detail pane carries the method note, so "these are medians and the periods are not comparable" travels with the figures.
