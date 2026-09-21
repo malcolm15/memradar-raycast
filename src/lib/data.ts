@@ -1,0 +1,103 @@
+// Loading, caching and degradation, kept free of Raycast imports so the
+// failure paths can be exercised outside the app: every dependency (fetch,
+// cache, clock) is injected.
+//
+// THE DEGRADATION RULE: a failed refresh must never produce an empty screen
+// while usable data exists. If the network fails and anything is cached, the
+// cached payload is returned WITH the date it was computed, and the caller
+// says so on screen. Only a failure with no cache at all is an error state.
+import type { ProductsPayload } from "./types";
+
+export const PRODUCTS_URL = "https://memradar.com/data/raycast-v1-products.json";
+// Matches the 4h edge cache on these files; the data itself changes once a day.
+export const CACHE_TTL_MS = 4 * 60 * 60 * 1000;
+export const REQUEST_TIMEOUT_MS = 15000;
+export const CACHE_KEY = "products-v1";
+// Identifies this client in the server's logs, so our traffic is attributable.
+export const USER_AGENT = "memradar-raycast (+https://memradar.com)";
+// Beyond this, the data is old enough that the reader should be told plainly.
+export const STALE_AFTER_DAYS = 3;
+
+export interface CacheLike {
+  get(key: string): string | undefined;
+  set(key: string, value: string): void;
+}
+
+export interface CachedEnvelope {
+  fetchedAt: number;
+  payload: ProductsPayload;
+}
+
+export interface LoadResult {
+  payload: ProductsPayload;
+  /** True when the network failed and this came from the cache instead. */
+  servedFromCacheAfterFailure: boolean;
+  /** Present only when the above is true. */
+  error?: string;
+}
+
+export interface LoadDeps {
+  cache: CacheLike;
+  fetchImpl?: typeof fetch;
+  now?: () => number;
+  url?: string;
+  ttlMs?: number;
+}
+
+function readCache(cache: CacheLike): CachedEnvelope | undefined {
+  const raw = cache.get(CACHE_KEY);
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as CachedEnvelope;
+    if (!parsed?.payload?.products?.length) return undefined;
+    return parsed;
+  } catch {
+    // A corrupt cache entry is the same as no cache: refetch, do not crash.
+    return undefined;
+  }
+}
+
+export async function loadProducts(deps: LoadDeps): Promise<LoadResult> {
+  const { cache } = deps;
+  const fetchImpl = deps.fetchImpl ?? fetch;
+  const now = deps.now ?? Date.now;
+  const url = deps.url ?? PRODUCTS_URL;
+  const ttlMs = deps.ttlMs ?? CACHE_TTL_MS;
+
+  const cached = readCache(cache);
+  if (cached && now() - cached.fetchedAt < ttlMs) {
+    return { payload: cached.payload, servedFromCacheAfterFailure: false };
+  }
+
+  try {
+    const res = await fetchImpl(url, {
+      headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const payload = (await res.json()) as ProductsPayload;
+    if (!payload?.products?.length) throw new Error("payload contained no products");
+    cache.set(CACHE_KEY, JSON.stringify({ fetchedAt: now(), payload } satisfies CachedEnvelope));
+    return { payload, servedFromCacheAfterFailure: false };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (cached) return { payload: cached.payload, servedFromCacheAfterFailure: true, error: message };
+    throw new Error(message);
+  }
+}
+
+/** Whole days between the payload's own computed date and now. */
+export function ageInDays(generated: string, now: () => number = Date.now): number {
+  const then = Date.parse(`${generated}T00:00:00Z`);
+  if (Number.isNaN(then)) return 0;
+  return Math.floor((now() - then) / 86400000);
+}
+
+export function isStale(generated: string, now: () => number = Date.now): boolean {
+  return ageInDays(generated, now) > STALE_AFTER_DAYS;
+}
+
+/** Local search over name, brand and SKU. No request is made per keystroke. */
+export function searchKeywords(product: { brand?: string; sku: string; name: string }): string[] {
+  return [product.sku, product.brand ?? "", ...product.name.split(/[\s(),]+/)].filter((t) => t.length > 1);
+}

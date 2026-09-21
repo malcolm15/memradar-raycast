@@ -13,10 +13,18 @@
     "macOS"
   ],
   "license": "MIT",
-  "commands": [],
+  "commands": [
+    {
+      "name": "search-memory-prices",
+      "title": "Search Memory Prices",
+      "description": "Search tracked RAM and SSD prices, with all-time lows and a decade of history.",
+      "mode": "view"
+    }
+  ],
   "dependencies": {
     "@raycast/api": "^1.104.25",
-    "@raycast/utils": "^1.17.0"
+    "@raycast/utils": "^1.17.0",
+    "react": "19.0.0"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^2.0.4",

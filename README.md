@@ -4,7 +4,11 @@ Search RAM and SSD prices with a decade of history, from [MemRadar](https://memr
 
 ## Commands
 
-_Not built yet. This repository currently holds the scaffold, the licensing pre-flight, and the store assets._
+### Search Memory Prices
+
+Search every tracked RAM and SSD product by name, brand or ASIN. Each row shows the current price and whether it is a good time to buy. Open the detail pane for the all-time low and high with the dates they were set, the 90-day average, how long the product has been tracked, and the monthly price history.
+
+The product list is downloaded once per session and searched locally, so typing makes no network requests.
 
 ## About the data
 
