@@ -288,17 +288,7 @@ function ProductDetailView({
   const above = aboveLow(product);
   const stale = payloadGenerated ? isStale(payloadGenerated) : false;
 
-  const markdown = [
-    `# ${product.name}`,
-    "",
-    historyMarkdown(product),
-    "",
-    "---",
-    "",
-    notice,
-    "",
-    attribution,
-  ]
+  const markdown = [`# ${product.name}`, "", historyMarkdown(product), "", "---", "", notice, "", attribution]
     .join("\n")
     .trim();
 

@@ -72,7 +72,12 @@ export default function ShowMarketOverview() {
       ) : (
         <List.Section title={sectionTitle}>
           {(payload?.segments ?? []).map((segment) => (
-            <SegmentItem key={segment.segment} segment={segment} payload={payload as MarketPayload} onRefresh={refresh} />
+            <SegmentItem
+              key={segment.segment}
+              segment={segment}
+              payload={payload as MarketPayload}
+              onRefresh={refresh}
+            />
           ))}
         </List.Section>
       )}
@@ -134,7 +139,8 @@ function SegmentItem({
                     text={`${pct(period.pct_change)}  ·  ${period.product_count} products`}
                     icon={{
                       source: period.pct_change > 0 ? Icon.ArrowUp : period.pct_change < 0 ? Icon.ArrowDown : Icon.Dot,
-                      tintColor: period.pct_change > 0 ? Color.Red : period.pct_change < 0 ? Color.Green : Color.SecondaryText,
+                      tintColor:
+                        period.pct_change > 0 ? Color.Red : period.pct_change < 0 ? Color.Green : Color.SecondaryText,
                     }}
                   />
                 );
@@ -145,7 +151,10 @@ function SegmentItem({
                 text={longDate(payload.generated)}
                 icon={stale ? { source: Icon.Warning, tintColor: Color.Orange } : undefined}
               />
-              <List.Item.Detail.Metadata.Label title="Figures computed" text={longDate(payload.computed_at.slice(0, 10))} />
+              <List.Item.Detail.Metadata.Label
+                title="Figures computed"
+                text={longDate(payload.computed_at.slice(0, 10))}
+              />
               {stale ? (
                 <List.Item.Detail.Metadata.Label
                   title="Warning"
