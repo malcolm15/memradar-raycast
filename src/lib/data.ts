@@ -97,7 +97,17 @@ export function isStale(generated: string, now: () => number = Date.now): boolea
   return ageInDays(generated, now) > STALE_AFTER_DAYS;
 }
 
-/** Local search over name, brand and SKU. No request is made per keystroke. */
-export function searchKeywords(product: { brand?: string; sku: string; name: string }): string[] {
-  return [product.sku, product.brand ?? "", ...product.name.split(/[\s(),]+/)].filter((t) => t.length > 1);
+/**
+ * Local search over name, brand and SKU: every whitespace-separated token in
+ * the query must appear somewhere in the haystack, so "trident 64gb" and
+ * "64gb trident" both match. Runs against the payload already in memory; no
+ * request is made per keystroke.
+ */
+export function matches(product: { brand?: string; sku: string; name: string }, query: string): boolean {
+  const haystack = `${product.name} ${product.brand ?? ""} ${product.sku}`.toLowerCase();
+  return query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((token) => haystack.includes(token));
 }

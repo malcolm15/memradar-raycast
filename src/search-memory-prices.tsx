@@ -1,8 +1,8 @@
 import { Action, ActionPanel, Cache, Color, Icon, Keyboard, List, showToast, Toast } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
-import { useState } from "react";
-import { ageInDays, isStale, loadProducts, searchKeywords, STALE_AFTER_DAYS } from "./lib/data";
-import { aboveLow, buyStateShort, BUY_STATE_LABEL, historyTable, longDate, money } from "./lib/format";
+import { useMemo, useState } from "react";
+import { ageInDays, isStale, loadProducts, matches, STALE_AFTER_DAYS } from "./lib/data";
+import { aboveLow, BUY_STATE_LABEL, historyTable, longDate, money } from "./lib/format";
 import type { Product } from "./lib/types";
 
 const cache = new Cache();
@@ -18,6 +18,10 @@ const STATE_COLOR: Record<string, Color> = {
 export default function SearchMemoryPrices() {
   const [showingDetail, setShowingDetail] = useState(false);
   const [category, setCategory] = useState<CategoryFilter>("all");
+  // Filtering is ours rather than Raycast's so the header can state how many
+  // rows a query actually matched. It runs over the payload already in memory:
+  // no request is made per keystroke.
+  const [searchText, setSearchText] = useState("");
 
   const { data, isLoading, revalidate, error } = usePromise(
     async () => {
@@ -38,7 +42,11 @@ export default function SearchMemoryPrices() {
 
   const payload = data?.payload;
   const products = payload?.products ?? [];
-  const filtered = category === "all" ? products : products.filter((p) => p.category === category);
+  const query = searchText.trim();
+  const filtered = useMemo(() => {
+    const byCategory = category === "all" ? products : products.filter((p) => p.category === category);
+    return query ? byCategory.filter((p) => matches(p, query)) : byCategory;
+  }, [products, category, query]);
 
   // The date the data was computed rides every view, on the section header,
   // because the site refreshes six times a day and this file does not.
@@ -48,7 +56,10 @@ export default function SearchMemoryPrices() {
   if (payload) {
     const age = ageInDays(payload.generated);
     const dated = `data from ${longDate(payload.generated)}`;
-    sectionTitle = `${filtered.length} products · ${dated}`;
+    const count = query
+      ? `${filtered.length} ${filtered.length === 1 ? "match" : "matches"} for "${query}"`
+      : `${filtered.length} products`;
+    sectionTitle = `${count} · ${dated}`;
     if (offline) sectionTitle = `Offline · ${sectionTitle}`;
     if (stale) sectionTitle = `⚠ ${age} days old · ${sectionTitle}`;
   }
@@ -57,6 +68,8 @@ export default function SearchMemoryPrices() {
     <List
       isLoading={isLoading}
       isShowingDetail={showingDetail}
+      filtering={false}
+      onSearchTextChange={setSearchText}
       searchBarPlaceholder="Search by name, brand or ASIN"
       searchBarAccessory={
         <List.Dropdown tooltip="Category" storeValue onChange={(v) => setCategory(v as CategoryFilter)}>
@@ -74,7 +87,7 @@ export default function SearchMemoryPrices() {
           actions={
             <ActionPanel>
               <Action title="Try Again" icon={Icon.ArrowClockwise} onAction={revalidate} />
-              <Action.OpenInBrowser title="Open Memradar" url="https://memradar.com" />
+              <Action.OpenInBrowser title="Open MemRadar" url="https://memradar.com" />
             </ActionPanel>
           }
         />
@@ -113,21 +126,24 @@ function ProductItem(props: {
   return (
     <List.Item
       title={product.name}
-      subtitle={showingDetail ? undefined : product.brand}
-      keywords={searchKeywords(product)}
       icon={product.category === "ram" ? Icon.MemoryChip : Icon.HardDrive}
       accessories={
         showingDetail
           ? undefined
           : [
-              ...(state ? [{ tag: { value: buyStateShort(state) ?? "", color: STATE_COLOR[state] } }] : []),
-              { text: money(product.price_usd) },
+              // The buy state is a dot, not a text tag: a tag competes with the
+              // price for row width and the price lost, truncating to "$5...".
+              // An icon is fixed-width, so the price always renders in full.
+              ...(state
+                ? [{ icon: { source: Icon.Dot, tintColor: STATE_COLOR[state] }, tooltip: BUY_STATE_LABEL[state] }]
+                : []),
+              { text: money(product.price_usd), tooltip: "Current price" },
             ]
       }
       detail={<ProductDetail {...props} />}
       actions={
         <ActionPanel>
-          <Action.OpenInBrowser title="Open on Memradar" url={product.url} icon={Icon.Globe} />
+          <Action.OpenInBrowser title="Open on MemRadar" url={product.url} icon={Icon.Globe} />
           <Action.CopyToClipboard title="Copy Price" content={money(product.price_usd)} />
           {product.all_time_low ? (
             <Action.CopyToClipboard title="Copy All-Time Low" content={money(product.all_time_low.price_usd)} />
