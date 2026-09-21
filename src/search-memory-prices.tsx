@@ -1,8 +1,8 @@
-import { Action, ActionPanel, Cache, Color, Icon, Keyboard, List, showToast, Toast } from "@raycast/api";
+import { Action, ActionPanel, Cache, Color, Detail, Icon, Keyboard, List, showToast, Toast } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
 import { useMemo, useRef, useState } from "react";
 import { ageInDays, isStale, loadProducts, matches, STALE_AFTER_DAYS } from "./lib/data";
-import { aboveLow, BUY_STATE_LABEL, historyTable, longDate, money } from "./lib/format";
+import { aboveLow, BUY_STATE_LABEL, historyMarkdown, historyTable, longDate, money } from "./lib/format";
 import type { Product } from "./lib/types";
 
 const cache = new Cache();
@@ -155,13 +155,32 @@ function ProductItem(props: {
       detail={<ProductDetail {...props} />}
       actions={
         <ActionPanel>
-          <Action.OpenInBrowser title="Open on MemRadar" url={product.url} icon={Icon.Globe} />
+          {/* The data is the point of this extension, so Enter opens it rather
+              than sending the reader to the website. */}
+          <Action.Push
+            title="Show Price History"
+            icon={Icon.LineChart}
+            target={
+              <ProductDetailView
+                product={product}
+                payloadGenerated={props.payloadGenerated}
+                attribution={props.attribution}
+                notice={props.notice}
+              />
+            }
+          />
+          <Action.OpenInBrowser
+            title="Open on MemRadar"
+            url={product.url}
+            icon={Icon.Globe}
+            shortcut={{ modifiers: ["cmd"], key: "return" }}
+          />
           <Action.CopyToClipboard title="Copy Price" content={money(product.price_usd)} />
           {product.all_time_low ? (
             <Action.CopyToClipboard title="Copy All-Time Low" content={money(product.all_time_low.price_usd)} />
           ) : null}
           <Action
-            title={showingDetail ? "Hide Details" : "Show Details"}
+            title={showingDetail ? "Hide Side Pane" : "Show Side Pane"}
             icon={Icon.Sidebar}
             shortcut={{ modifiers: ["cmd"], key: "d" }}
             onAction={props.onToggleDetail}
@@ -243,6 +262,96 @@ function ProductDetail({
           ) : null}
           <List.Item.Detail.Metadata.Link title="Product page" target={product.url} text="memradar.com" />
         </List.Item.Detail.Metadata>
+      }
+    />
+  );
+}
+
+/**
+ * The pushed view: everything known about one product, at full width. Same
+ * fields as the side pane plus the complete history, and the payload's own
+ * attribution and staleness notice, which are rendered rather than restated.
+ */
+function ProductDetailView({
+  product,
+  payloadGenerated,
+  attribution,
+  notice,
+}: {
+  product: Product;
+  payloadGenerated: string;
+  attribution: string;
+  notice: string;
+}) {
+  const low = product.all_time_low;
+  const high = product.all_time_high;
+  const above = aboveLow(product);
+  const stale = payloadGenerated ? isStale(payloadGenerated) : false;
+
+  const markdown = [
+    `# ${product.name}`,
+    "",
+    historyMarkdown(product),
+    "",
+    "---",
+    "",
+    notice,
+    "",
+    attribution,
+  ]
+    .join("\n")
+    .trim();
+
+  return (
+    <Detail
+      navigationTitle={product.name}
+      markdown={markdown}
+      metadata={
+        <Detail.Metadata>
+          <Detail.Metadata.Label title="Current price" text={money(product.price_usd)} />
+          {product.buy_state ? (
+            <Detail.Metadata.TagList title="Buy state">
+              <Detail.Metadata.TagList.Item
+                text={BUY_STATE_LABEL[product.buy_state]}
+                color={STATE_COLOR[product.buy_state]}
+              />
+            </Detail.Metadata.TagList>
+          ) : null}
+          {product.avg_90d_usd !== undefined ? (
+            <Detail.Metadata.Label title="90-day average" text={money(product.avg_90d_usd)} />
+          ) : null}
+          <Detail.Metadata.Separator />
+          {low ? (
+            <Detail.Metadata.Label title="All-time low" text={`${money(low.price_usd)} · ${longDate(low.date)}`} />
+          ) : null}
+          {above ? <Detail.Metadata.Label title="Against that low" text={above} /> : null}
+          {high ? (
+            <Detail.Metadata.Label title="All-time high" text={`${money(high.price_usd)} · ${longDate(high.date)}`} />
+          ) : null}
+          <Detail.Metadata.Label title="Tracked" text={`${product.tracked_days} days`} />
+          <Detail.Metadata.Separator />
+          <Detail.Metadata.Label
+            title="Data computed"
+            text={payloadGenerated ? longDate(payloadGenerated) : "unknown"}
+            icon={stale ? { source: Icon.Warning, tintColor: Color.Orange } : undefined}
+          />
+          {stale ? (
+            <Detail.Metadata.Label
+              title="Warning"
+              text={`More than ${STALE_AFTER_DAYS} days old; the site may have newer prices`}
+            />
+          ) : null}
+          <Detail.Metadata.Link title="Product page" target={product.url} text="memradar.com" />
+        </Detail.Metadata>
+      }
+      actions={
+        <ActionPanel>
+          <Action.OpenInBrowser title="Open on MemRadar" url={product.url} icon={Icon.Globe} />
+          <Action.CopyToClipboard title="Copy Price" content={money(product.price_usd)} />
+          {product.all_time_low ? (
+            <Action.CopyToClipboard title="Copy All-Time Low" content={money(product.all_time_low.price_usd)} />
+          ) : null}
+        </ActionPanel>
       }
     />
   );

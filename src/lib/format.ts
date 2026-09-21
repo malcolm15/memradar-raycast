@@ -38,17 +38,53 @@ export function aboveLow(product: Product): string | undefined {
 }
 
 /**
- * The monthly history as a compact table, newest first. Capped for readability;
- * the count states how much history exists beyond the rows shown.
+ * The monthly history, readable at Detail width. A deep product carries 129
+ * months (G.SKILL RipjawsV, back to 2015), and 129 table rows is a wall of
+ * numbers nobody reads. So: the last `recentMonths` in full, then one line per
+ * earlier year with its low, high and year-end price, which keeps the decade
+ * of shape without the scroll.
  */
-export function historyTable(product: Product, maxRows = 24): string {
+export function historyMarkdown(product: Product, recentMonths = 24): string {
   const history = product.history_monthly ?? [];
   if (!history.length) return "_No recorded history._";
-  const rows = [...history].reverse();
-  const shown = rows.slice(0, maxRows);
-  const lines = ["| Month | Price |", "| --- | --- |", ...shown.map(([m, v]) => `| ${monthLabel(m)} | ${money(v)} |`)];
-  if (rows.length > shown.length) {
-    lines.push("", `_Showing the most recent ${shown.length} of ${rows.length} months._`);
+
+  const recent = history.slice(-recentMonths);
+  const earlier = history.slice(0, Math.max(0, history.length - recentMonths));
+  const parts: string[] = [];
+
+  if (earlier.length) {
+    const byYear = new Map<string, number[]>();
+    for (const [month, price] of earlier) {
+      const year = month.slice(0, 4);
+      if (!byYear.has(year)) byYear.set(year, []);
+      byYear.get(year)?.push(price);
+    }
+    parts.push(`### ${byYear.size === 1 ? "Earlier year" : "Earlier years"}`, "");
+    parts.push("| Year | Low | High | Year end |", "| --- | --- | --- | --- |");
+    for (const [year, prices] of byYear) {
+      parts.push(
+        `| ${year} | ${money(Math.min(...prices))} | ${money(Math.max(...prices))} | ${money(prices[prices.length - 1])} |`,
+      );
+    }
+    parts.push("");
+  }
+
+  parts.push(`### Last ${recent.length} months`, "");
+  parts.push("| Month | Price |", "| --- | --- |");
+  for (const [month, price] of [...recent].reverse()) {
+    parts.push(`| ${monthLabel(month)} | ${money(price)} |`);
+  }
+  return parts.join("\n");
+}
+
+/** The narrow side pane gets fewer rows and no yearly block. */
+export function historyTable(product: Product, maxRows = 12): string {
+  const history = product.history_monthly ?? [];
+  if (!history.length) return "_No recorded history._";
+  const rows = [...history].reverse().slice(0, maxRows);
+  const lines = ["| Month | Price |", "| --- | --- |", ...rows.map(([m, v]) => `| ${monthLabel(m)} | ${money(v)} |`)];
+  if (history.length > rows.length) {
+    lines.push("", `_${history.length} months recorded; press Enter for the full history._`);
   }
   return lines.join("\n");
 }
