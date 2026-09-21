@@ -42,6 +42,13 @@ export interface LoadDeps {
   now?: () => number;
   url?: string;
   ttlMs?: number;
+  /**
+   * Skip the cache and go to the network. THE REFRESH ACTION SETS THIS, and it
+   * is the difference between a refresh and a no-op: without it, a user whose
+   * cache is younger than the TTL has no way to reach newer data, which is
+   * being stuck on stale data with no way out.
+   */
+  force?: boolean;
 }
 
 function readCache(cache: CacheLike): CachedEnvelope | undefined {
@@ -65,7 +72,7 @@ export async function loadProducts(deps: LoadDeps): Promise<LoadResult> {
   const ttlMs = deps.ttlMs ?? CACHE_TTL_MS;
 
   const cached = readCache(cache);
-  if (cached && now() - cached.fetchedAt < ttlMs) {
+  if (!deps.force && cached && now() - cached.fetchedAt < ttlMs) {
     return { payload: cached.payload, servedFromCacheAfterFailure: false };
   }
 

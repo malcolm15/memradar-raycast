@@ -1,6 +1,6 @@
 import { Action, ActionPanel, Cache, Color, Icon, Keyboard, List, showToast, Toast } from "@raycast/api";
 import { usePromise } from "@raycast/utils";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ageInDays, isStale, loadProducts, matches, STALE_AFTER_DAYS } from "./lib/data";
 import { aboveLow, BUY_STATE_LABEL, historyTable, longDate, money } from "./lib/format";
 import type { Product } from "./lib/types";
@@ -23,9 +23,15 @@ export default function SearchMemoryPrices() {
   // no request is made per keystroke.
   const [searchText, setSearchText] = useState("");
 
+  // usePromise's revalidate takes no arguments, so the intent to bypass the
+  // cache is parked here and consumed by the next run.
+  const forceNextLoad = useRef(false);
+
   const { data, isLoading, revalidate, error } = usePromise(
     async () => {
-      const result = await loadProducts({ cache });
+      const force = forceNextLoad.current;
+      forceNextLoad.current = false;
+      const result = await loadProducts({ cache, force });
       if (result.servedFromCacheAfterFailure) {
         // Degrading is not silent: say what happened and how old the data is.
         await showToast({
@@ -39,6 +45,12 @@ export default function SearchMemoryPrices() {
     [],
     { failureToastOptions: { title: "Couldn't load prices" } },
   );
+
+  // Refresh must reach the network, not re-read the cache it is refreshing.
+  const refresh = () => {
+    forceNextLoad.current = true;
+    revalidate();
+  };
 
   const payload = data?.payload;
   const products = payload?.products ?? [];
@@ -86,7 +98,7 @@ export default function SearchMemoryPrices() {
           description={`${error.message}. Check your connection, then try again.`}
           actions={
             <ActionPanel>
-              <Action title="Try Again" icon={Icon.ArrowClockwise} onAction={revalidate} />
+              <Action title="Try Again" icon={Icon.ArrowClockwise} onAction={refresh} />
               <Action.OpenInBrowser title="Open MemRadar" url="https://memradar.com" />
             </ActionPanel>
           }
@@ -102,7 +114,7 @@ export default function SearchMemoryPrices() {
               notice={payload?.notice ?? ""}
               showingDetail={showingDetail}
               onToggleDetail={() => setShowingDetail((v) => !v)}
-              onRefresh={revalidate}
+              onRefresh={refresh}
             />
           ))}
         </List.Section>
