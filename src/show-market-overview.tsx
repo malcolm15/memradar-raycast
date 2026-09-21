@@ -2,7 +2,7 @@ import { Action, ActionPanel, Cache, Color, Icon, Keyboard, List, showToast, Toa
 import { usePromise } from "@raycast/utils";
 import { useRef } from "react";
 import { ageInDays, isStale, loadMarket, STALE_AFTER_DAYS } from "./lib/data";
-import { longDate, money, pct } from "./lib/format";
+import { longDate, money, pct, shortDate } from "./lib/format";
 import type { MarketPayload, MarketSegment } from "./lib/types";
 
 const cache = new Cache();
@@ -48,7 +48,9 @@ export default function ShowMarketOverview() {
   const offline = data?.servedFromCacheAfterFailure ?? false;
   let sectionTitle = "";
   if (payload) {
-    sectionTitle = `${payload.segments.length} segments · data from ${longDate(payload.generated)}`;
+    // The detail pane is always open here, so the list column is narrow: the
+    // long form truncated to "4 segments · data fro...September 21, 2026".
+    sectionTitle = `${payload.segments.length} segments · ${shortDate(payload.generated)}`;
     if (offline) sectionTitle = `Offline · ${sectionTitle}`;
     if (stale) sectionTitle = `⚠ ${ageInDays(payload.generated)} days old · ${sectionTitle}`;
   }

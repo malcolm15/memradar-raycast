@@ -21,6 +21,13 @@ export function longDate(isoDate: string): string {
   return d.toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 }
 
+/** "2026-09-21" -> "Sep 21, 2026", for places where the column is narrow. */
+export function shortDate(isoDate: string): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return isoDate;
+  return d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+}
+
 /** "2026-09" -> "Sep 2026", for the history table. */
 export function monthLabel(month: string): string {
   const d = new Date(`${month}-01T00:00:00Z`);
