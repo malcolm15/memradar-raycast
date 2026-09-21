@@ -20,7 +20,7 @@ const PREFIX = "extensions/memradar/";
 // Deliberately NOT mirrored: this checker is a maintenance tool, and the
 // published extension folder should hold as little non-runtime code as
 // possible. Anything listed here is expected to be absent from the fork.
-const LOCAL_ONLY = new Set(["scripts/check-fork-sync.mjs"]);
+const LOCAL_ONLY = new Set(["scripts/check-fork-sync.mjs", "MAINTAINING.md"]);
 
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 
