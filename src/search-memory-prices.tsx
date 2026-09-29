@@ -1,5 +1,5 @@
 import { Action, ActionPanel, Cache, Color, Detail, Icon, Keyboard, List, showToast, Toast } from "@raycast/api";
-import { usePromise } from "@raycast/utils";
+import { useCachedState, usePromise } from "@raycast/utils";
 import { useMemo, useRef, useState } from "react";
 import { ageInDays, isStale, loadProducts, matches, STALE_AFTER_DAYS } from "./lib/data";
 import { aboveLow, BUY_STATE_LABEL, historyMarkdown, historyTable, longDate, money } from "./lib/format";
@@ -17,7 +17,13 @@ const STATE_COLOR: Record<string, Color> = {
 
 export default function SearchMemoryPrices() {
   const [showingDetail, setShowingDetail] = useState(false);
-  const [category, setCategory] = useState<CategoryFilter>("all");
+  // ONE SOURCE OF TRUTH. This used to be useState plus the dropdown's own
+  // storeValue, which are two stores for one value: Raycast restored the
+  // dropdown's last selection while React initialised its copy to "all", so on
+  // reopen the control showed one category and the list was filtered by
+  // another until the reader touched it. useCachedState persists the value and
+  // is the value the dropdown renders, so they cannot disagree.
+  const [category, setCategory] = useCachedState<CategoryFilter>("category", "all");
   // Filtering is ours rather than Raycast's so the header can state how many
   // rows a query actually matched. It runs over the payload already in memory:
   // no request is made per keystroke.
@@ -84,7 +90,7 @@ export default function SearchMemoryPrices() {
       onSearchTextChange={setSearchText}
       searchBarPlaceholder="Search by name, brand or ASIN"
       searchBarAccessory={
-        <List.Dropdown tooltip="Category" storeValue onChange={(v) => setCategory(v as CategoryFilter)}>
+        <List.Dropdown tooltip="Category" value={category} onChange={(v) => setCategory(v as CategoryFilter)}>
           <List.Dropdown.Item title="All" value="all" />
           <List.Dropdown.Item title="RAM" value="ram" />
           <List.Dropdown.Item title="SSDs" value="ssd" />
