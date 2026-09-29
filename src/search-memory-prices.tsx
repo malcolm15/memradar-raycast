@@ -9,6 +9,14 @@ const cache = new Cache();
 
 type CategoryFilter = "all" | "ram" | "ssd";
 
+// Named here rather than reaching back into the dropdown's JSX, so the empty
+// view can say which category it searched without the two drifting.
+const CATEGORY_LABEL: Record<CategoryFilter, string> = {
+  all: "any category",
+  ram: "RAM",
+  ssd: "SSDs",
+};
+
 const STATE_COLOR: Record<string, Color> = {
   good: Color.Green,
   typical: Color.SecondaryText,
@@ -106,6 +114,26 @@ export default function SearchMemoryPrices() {
             <ActionPanel>
               <Action title="Try Again" icon={Icon.ArrowClockwise} onAction={refresh} />
               <Action.OpenInBrowser title="Open MemRadar" url="https://memradar.com" />
+            </ActionPanel>
+          }
+        />
+      ) : filtered.length === 0 && payload ? (
+        // ONLY reachable on the else branch, so the offline/error view above
+        // always takes precedence: the two cannot render together. Gated on
+        // `payload` as well, so the empty second between mount and first load
+        // does not flash "no products match" at a reader who has not searched.
+        <List.EmptyView
+          icon={Icon.MagnifyingGlass}
+          title="No products match"
+          description={
+            query
+              ? `Nothing matches "${query}"${category === "all" ? "" : ` in ${CATEGORY_LABEL[category]}`}. Try fewer words, or a brand or ASIN.`
+              : `No products in ${CATEGORY_LABEL[category]}.`
+          }
+          actions={
+            <ActionPanel>
+              <Action.OpenInBrowser title="Search on MemRadar" url="https://memradar.com" icon={Icon.Globe} />
+              <Action title="Refresh Data" icon={Icon.ArrowClockwise} onAction={refresh} />
             </ActionPanel>
           }
         />
