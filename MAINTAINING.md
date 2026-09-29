@@ -13,10 +13,20 @@ To update the pull request, either:
 - copy the changed files from here into the fork branch and push:
 
 ```
-git clone --depth 1 --branch ext/memradar https://github.com/malcolm15/raycast-extensions.git
-cp <changed files> raycast-extensions/extensions/memradar/...
-cd raycast-extensions && git commit -am "..." && git push origin ext/memradar
+git clone --filter=blob:none --sparse --depth 1 --branch ext/memradar \
+  https://github.com/malcolm15/raycast-extensions.git
+cd raycast-extensions && git sparse-checkout set extensions/memradar
+cp <changed files> extensions/memradar/...
+git commit -am "..." && git push origin ext/memradar
 ```
+
+**Use the sparse partial clone, not a plain `--depth 1`.** `raycast/extensions`
+carries every published extension, so shallow alone still fetches every blob at
+the tip: measured 2026-09-29, a plain `--depth 1` clone reached **7.8 GB** and
+was still running when it was killed, while `--filter=blob:none --sparse` plus
+`sparse-checkout set extensions/memradar` produced a working tree of **32 MB**.
+`--filter=blob:none` defers blob download until a file is actually needed, and
+the sparse checkout means only this extension's files ever are.
 
 **After any update, confirm the two trees still match:**
 
