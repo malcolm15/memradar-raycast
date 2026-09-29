@@ -2,7 +2,16 @@ import { Action, ActionPanel, Cache, Color, Detail, Icon, Keyboard, List, showTo
 import { useCachedState, usePromise } from "@raycast/utils";
 import { useMemo, useRef, useState } from "react";
 import { ageInDays, isStale, loadProducts, matches, STALE_AFTER_DAYS } from "./lib/data";
-import { aboveLow, BUY_STATE_LABEL, historyMarkdown, historyTable, longDate, money } from "./lib/format";
+import {
+  aboveLow,
+  BUY_STATE_LABEL,
+  buyState,
+  historyMarkdown,
+  historyTable,
+  longDate,
+  money,
+  pricePoint,
+} from "./lib/format";
 import type { Product } from "./lib/types";
 
 const cache = new Cache();
@@ -139,18 +148,23 @@ export default function SearchMemoryPrices() {
         />
       ) : (
         <List.Section title={sectionTitle}>
-          {filtered.map((product) => (
-            <ProductItem
-              key={product.sku}
-              product={product}
-              payloadGenerated={payload?.generated ?? ""}
-              attribution={payload?.attribution ?? ""}
-              notice={payload?.notice ?? ""}
-              showingDetail={showingDetail}
-              onToggleDetail={() => setShowingDetail((v) => !v)}
-              onRefresh={refresh}
-            />
-          ))}
+          {/* Narrowed on `payload` rather than defaulting these to "": an empty
+              attribution is the licensed-data credit silently missing, so a payload
+              without one is now rejected on load instead of rendered blank. */}
+          {payload
+            ? filtered.map((product) => (
+                <ProductItem
+                  key={product.sku}
+                  product={product}
+                  payloadGenerated={payload.generated}
+                  attribution={payload.attribution}
+                  notice={payload.notice}
+                  showingDetail={showingDetail}
+                  onToggleDetail={() => setShowingDetail((v) => !v)}
+                  onRefresh={refresh}
+                />
+              ))
+            : null}
         </List.Section>
       )}
     </List>
@@ -167,7 +181,8 @@ function ProductItem(props: {
   onRefresh: () => void;
 }) {
   const { product, showingDetail } = props;
-  const state = product.buy_state;
+  const state = buyState(product.buy_state);
+  const lowPoint = pricePoint(product.all_time_low);
 
   return (
     <List.Item
@@ -210,9 +225,7 @@ function ProductItem(props: {
             shortcut={{ modifiers: ["cmd"], key: "return" }}
           />
           <Action.CopyToClipboard title="Copy Price" content={money(product.price_usd)} />
-          {product.all_time_low ? (
-            <Action.CopyToClipboard title="Copy All-Time Low" content={money(product.all_time_low.price_usd)} />
-          ) : null}
+          {lowPoint ? <Action.CopyToClipboard title="Copy All-Time Low" content={money(lowPoint.price_usd)} /> : null}
           <Action
             title={showingDetail ? "Hide Side Pane" : "Show Side Pane"}
             icon={Icon.Sidebar}
@@ -246,8 +259,9 @@ function ProductDetail({
     .join("\n")
     .trim();
 
-  const low = product.all_time_low;
-  const high = product.all_time_high;
+  const low = pricePoint(product.all_time_low);
+  const high = pricePoint(product.all_time_high);
+  const state = buyState(product.buy_state);
   const above = aboveLow(product);
   const stale = payloadGenerated ? isStale(payloadGenerated) : false;
 
@@ -257,12 +271,9 @@ function ProductDetail({
       metadata={
         <List.Item.Detail.Metadata>
           <List.Item.Detail.Metadata.Label title="Current price" text={money(product.price_usd)} />
-          {product.buy_state ? (
+          {state ? (
             <List.Item.Detail.Metadata.TagList title="Buy state">
-              <List.Item.Detail.Metadata.TagList.Item
-                text={BUY_STATE_LABEL[product.buy_state]}
-                color={STATE_COLOR[product.buy_state]}
-              />
+              <List.Item.Detail.Metadata.TagList.Item text={BUY_STATE_LABEL[state]} color={STATE_COLOR[state]} />
             </List.Item.Detail.Metadata.TagList>
           ) : null}
           {low ? (
@@ -317,8 +328,9 @@ function ProductDetailView({
   attribution: string;
   notice: string;
 }) {
-  const low = product.all_time_low;
-  const high = product.all_time_high;
+  const low = pricePoint(product.all_time_low);
+  const high = pricePoint(product.all_time_high);
+  const state = buyState(product.buy_state);
   const above = aboveLow(product);
   const stale = payloadGenerated ? isStale(payloadGenerated) : false;
 
@@ -333,12 +345,9 @@ function ProductDetailView({
       metadata={
         <Detail.Metadata>
           <Detail.Metadata.Label title="Current price" text={money(product.price_usd)} />
-          {product.buy_state ? (
+          {state ? (
             <Detail.Metadata.TagList title="Buy state">
-              <Detail.Metadata.TagList.Item
-                text={BUY_STATE_LABEL[product.buy_state]}
-                color={STATE_COLOR[product.buy_state]}
-              />
+              <Detail.Metadata.TagList.Item text={BUY_STATE_LABEL[state]} color={STATE_COLOR[state]} />
             </Detail.Metadata.TagList>
           ) : null}
           {product.avg_90d_usd !== undefined ? (
@@ -372,9 +381,7 @@ function ProductDetailView({
         <ActionPanel>
           <Action.OpenInBrowser title="Open on MemRadar" url={product.url} icon={Icon.Globe} />
           <Action.CopyToClipboard title="Copy Price" content={money(product.price_usd)} />
-          {product.all_time_low ? (
-            <Action.CopyToClipboard title="Copy All-Time Low" content={money(product.all_time_low.price_usd)} />
-          ) : null}
+          {low ? <Action.CopyToClipboard title="Copy All-Time Low" content={money(low.price_usd)} /> : null}
         </ActionPanel>
       }
     />
